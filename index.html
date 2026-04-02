@@ -339,229 +339,273 @@ function setProgress(pct,text){
   document.getElementById('progressLabel').textContent=text;
 }
 
+function loadImage(src){
+  return new Promise(function(res,rej){var img=new Image();img.onload=function(){res(img);};img.onerror=rej;img.src=src;});
+}
+
 async function runEnhancement(){
   var img=document.getElementById('previewImg');
   var photo=document.getElementById('previewPhoto');
   var tagsEl=document.getElementById('aiTags');
-  var errBox=document.getElementById('errorBox');
   var btns=document.getElementById('enhanceBtns');
-  tagsEl.innerHTML='';errBox.style.display='none';btns.classList.add('hidden');
+  tagsEl.innerHTML='';btns.classList.add('hidden');
   photo.classList.add('enhancing');
   img.src=capturedImageData||'';
-
-  // Set preview size based on passport ratio
   var ratio=selectedSize.w/selectedSize.h;
-  var previewH=260, previewW=Math.round(previewH*ratio);
+  var previewH=260,previewW=Math.round(previewH*ratio);
   if(previewW<160){previewW=160;previewH=Math.round(previewW/ratio);}
-  photo.style.width=previewW+'px';
-  photo.style.height=previewH+'px';
-
-  setProgress(5,'Preparing image...');
-  setTag('Image loaded');
-
-  try {
-    setProgress(15,'Loading AI segmentation model...');
-    var processed = await processWithMediaPipe();
+  photo.style.width=previewW+'px';photo.style.height=previewH+'px';
+  setProgress(5,'Preparing image...');setTag('Image loaded');
+  try{
+    setProgress(12,'Auto correcting exposure & color...');
+    var preEnhanced=await preEnhanceSource(capturedImageData);
+    setTag('Auto Levels');setTag('White Balance');
+    setProgress(22,'Loading AI segmentation...');
+    var processed=await processWithMediaPipe(preEnhanced);
     capturedImageData=processed;
     img.src=capturedImageData;
     photo.classList.remove('enhancing');
     setProgress(100,'Done! Your photo is ready ✨');
     setTag('Complete');
     btns.classList.remove('hidden');
-  } catch(err) {
-    console.warn('MediaPipe failed, using fallback:', err);
-    setTag('Using enhanced fallback');
-    applyFallbackEnhancement();
+  }catch(err){
+    console.warn('MediaPipe failed, fallback:',err);
+    setTag('Fallback mode');
+    await applyFallbackEnhancement();
     photo.classList.remove('enhancing');
     setProgress(100,'Done! ✨');
     btns.classList.remove('hidden');
   }
 }
 
-async function processWithMediaPipe(){
-  return new Promise(function(resolve, reject){
-    var timeout=setTimeout(function(){reject(new Error('MediaPipe timeout'));}, 25000);
+// Pre-enhance: auto white balance + auto levels on raw source
+async function preEnhanceSource(imageData){
+  var img=await loadImage(imageData);
+  var c=document.createElement('canvas');
+  c.width=img.width;c.height=img.height;
+  var ctx=c.getContext('2d');
+  ctx.drawImage(img,0,0);
+  autoWhiteBalance(ctx,img.width,img.height);
+  autoLevels(ctx,img.width,img.height);
+  return c.toDataURL('image/jpeg',0.95);
+}
 
-    // Lazy-init model
+async function processWithMediaPipe(enhancedSrc){
+  return new Promise(function(resolve,reject){
+    var timeout=setTimeout(function(){reject(new Error('timeout'));},28000);
     if(!segModel){
       segModel=new SelfieSegmentation({
-        locateFile:function(file){
-          return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/'+file;
-        }
+        locateFile:function(file){return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/'+file;}
       });
       segModel.setOptions({modelSelection:1});
     }
-
     segModel.onResults(function(results){
       clearTimeout(timeout);
       try{
-        setProgress(60,'Background removed...');
-        setTag('BG Removal');
-
-        var srcW=results.image.width, srcH=results.image.height;
-
-        // Build mask canvas
+        setProgress(55,'Background removed...');setTag('BG Removal');
+        var srcW=results.image.width,srcH=results.image.height;
+        // Build mask
         var maskCvs=document.createElement('canvas');
         maskCvs.width=srcW;maskCvs.height=srcH;
         var maskCtx=maskCvs.getContext('2d');
         maskCtx.drawImage(results.segmentationMask,0,0,srcW,srcH);
         var maskPx=maskCtx.getImageData(0,0,srcW,srcH).data;
-
-        // Build person canvas with alpha mask applied
+        // Person canvas with alpha from mask
         var personCvs=document.createElement('canvas');
         personCvs.width=srcW;personCvs.height=srcH;
         var personCtx=personCvs.getContext('2d');
         personCtx.drawImage(results.image,0,0,srcW,srcH);
         var personPx=personCtx.getImageData(0,0,srcW,srcH);
-        // Soft edge: apply mask as alpha with slight feathering
         for(var i=0;i<maskPx.length;i+=4){
-          var confidence=maskPx[i];
-          // Smooth the edge with a soft threshold
-          var alpha=confidence<128?confidence*2:255;
-          personPx.data[i+3]=Math.min(255,alpha);
+          var conf=maskPx[i];
+          personPx.data[i+3]=conf<128?conf*2:255;
         }
         personCtx.putImageData(personPx,0,0);
-
-        // Determine output canvas size from passport standard
-        var ratio=selectedSize.w/selectedSize.h;
-        var outH=600, outW=Math.round(600*ratio);
-        if(ratio>=1){outW=600;outH=Math.round(600/ratio);}
-
+        // Output canvas at high res
+        var dstRatio=selectedSize.w/selectedSize.h;
+        var outH=800,outW=Math.round(800*dstRatio);
+        if(dstRatio>=1){outW=800;outH=Math.round(800/dstRatio);}
         var outCvs=document.createElement('canvas');
         outCvs.width=outW;outCvs.height=outH;
         var outCtx=outCvs.getContext('2d');
-
-        // Fill background
-        outCtx.fillStyle=selectedBg.color;
-        outCtx.fillRect(0,0,outW,outH);
-
-        setProgress(72,'Framing photo...');
-        setTag('Smart Crop');
-
-        // Smart crop: center-crop source to passport aspect, aligned top for face
-        var srcRatio=srcW/srcH;
-        var dstRatio=outW/outH;
-        var sx,sy,sw,sh;
-        if(srcRatio>dstRatio){
-          // Wider — crop sides
-          sh=srcH; sw=srcH*dstRatio;
-          sx=(srcW-sw)/2; sy=0;
-        } else {
-          // Taller — crop bottom (keep top which has the face)
-          sw=srcW; sh=srcW/dstRatio;
-          sx=0; sy=0;
-        }
+        outCtx.fillStyle=selectedBg.color;outCtx.fillRect(0,0,outW,outH);
+        setProgress(62,'Smart crop...');setTag('Face Frame');
+        var srcRatio=srcW/srcH,dstR=outW/outH,sx,sy,sw,sh;
+        if(srcRatio>dstR){sh=srcH;sw=srcH*dstR;sx=(srcW-sw)/2;sy=0;}
+        else{sw=srcW;sh=srcW/dstR;sx=0;sy=0;}
         outCtx.drawImage(personCvs,sx,sy,sw,sh,0,0,outW,outH);
-
-        setProgress(82,'Sharpening & detail boost...');
-        setTag('AI Sharpen');
-        applyUnsharpMask(outCtx,outW,outH,1.5,1.2,3);
-
-        setProgress(91,'Color correction...');
-        setTag('Color Grade');
-        applyColorGrade(outCtx,outW,outH);
-
-        resolve(outCvs.toDataURL('image/jpeg',0.96));
-      } catch(e){reject(e);}
+        setProgress(72,'AI sharpening...');setTag('Unsharp Mask');
+        applyUnsharpMask(outCtx,outW,outH,3.0,1.0,1);
+        setProgress(81,'Clarity boost...');setTag('Clarity');
+        applyClarity(outCtx,outW,outH,0.7,22);
+        setProgress(90,'Pro color grade...');setTag('Color Grade');
+        applyProColorGrade(outCtx,outW,outH);
+        resolve(outCvs.toDataURL('image/jpeg',0.97));
+      }catch(e){reject(e);}
     });
-
-    setProgress(25,'Detecting face & person...');
-    setTag('Face Detection');
+    setProgress(32,'Detecting face & person...');setTag('Face Detection');
     var sourceImg=new Image();
-    sourceImg.onload=function(){
-      segModel.send({image:sourceImg}).catch(reject);
-    };
+    sourceImg.onload=function(){segModel.send({image:sourceImg}).catch(reject);};
     sourceImg.onerror=reject;
-    sourceImg.src=capturedImageData;
+    sourceImg.src=enhancedSrc;
   });
 }
 
-// Fallback when MediaPipe not available
-function applyFallbackEnhancement(){
-  var image=new Image();
-  image.onload=function(){
-    var ratio=selectedSize.w/selectedSize.h;
-    var outH=600,outW=Math.round(600*ratio);
-    if(ratio>=1){outW=600;outH=Math.round(600/ratio);}
-    var c=document.createElement('canvas');
-    c.width=outW;c.height=outH;
-    var ctx=c.getContext('2d');
-    ctx.fillStyle=selectedBg.color;
-    ctx.fillRect(0,0,outW,outH);
-    // Center-crop source
-    var srcR=image.width/image.height,dstR=outW/outH;
-    var sx,sy,sw,sh;
-    if(srcR>dstR){sh=image.height;sw=image.height*dstR;sx=(image.width-sw)/2;sy=0;}
-    else{sw=image.width;sh=image.width/dstR;sx=0;sy=0;}
-    ctx.drawImage(image,sx,sy,sw,sh,0,0,outW,outH);
-    applyUnsharpMask(ctx,outW,outH,1.5,1.2,3);
-    applyColorGrade(ctx,outW,outH);
-    capturedImageData=c.toDataURL('image/jpeg',0.96);
-    document.getElementById('previewImg').src=capturedImageData;
-    document.getElementById('enhanceBtns').classList.remove('hidden');
-  };
-  image.src=capturedImageData;
+async function applyFallbackEnhancement(){
+  var preEnhanced=await preEnhanceSource(capturedImageData);
+  var image=await loadImage(preEnhanced);
+  var ratio=selectedSize.w/selectedSize.h;
+  var outH=800,outW=Math.round(800*ratio);
+  if(ratio>=1){outW=800;outH=Math.round(800/ratio);}
+  var c=document.createElement('canvas');c.width=outW;c.height=outH;
+  var ctx=c.getContext('2d');
+  ctx.fillStyle=selectedBg.color;ctx.fillRect(0,0,outW,outH);
+  var srcR=image.width/image.height,dstR=outW/outH,sx,sy,sw,sh;
+  if(srcR>dstR){sh=image.height;sw=image.height*dstR;sx=(image.width-sw)/2;sy=0;}
+  else{sw=image.width;sh=image.width/dstR;sx=0;sy=0;}
+  ctx.drawImage(image,sx,sy,sw,sh,0,0,outW,outH);
+  setProgress(70,'Sharpening...');applyUnsharpMask(ctx,outW,outH,3.0,1.0,1);
+  setProgress(82,'Clarity...');applyClarity(ctx,outW,outH,0.7,22);
+  setProgress(91,'Color grade...');applyProColorGrade(ctx,outW,outH);
+  capturedImageData=c.toDataURL('image/jpeg',0.97);
+  document.getElementById('previewImg').src=capturedImageData;
+  document.getElementById('enhanceBtns').classList.remove('hidden');
+}
+
+// ── AUTO WHITE BALANCE (gray world) ───────────────────────────────
+function autoWhiteBalance(ctx,w,h){
+  var id=ctx.getImageData(0,0,w,h);var d=id.data;
+  var sR=0,sG=0,sB=0,n=0;
+  for(var i=0;i<d.length;i+=4){sR+=d[i];sG+=d[i+1];sB+=d[i+2];n++;}
+  if(!n)return;
+  var gray=(sR+sG+sB)/(3*n);
+  var kR=gray/(sR/n),kG=gray/(sG/n),kB=gray/(sB/n);
+  kR=Math.max(0.75,Math.min(1.35,kR));
+  kG=Math.max(0.75,Math.min(1.35,kG));
+  kB=Math.max(0.75,Math.min(1.35,kB));
+  for(var j=0;j<d.length;j+=4){
+    d[j]=Math.max(0,Math.min(255,d[j]*kR));
+    d[j+1]=Math.max(0,Math.min(255,d[j+1]*kG));
+    d[j+2]=Math.max(0,Math.min(255,d[j+2]*kB));
+  }
+  ctx.putImageData(id,0,0);
+}
+
+// ── AUTO LEVELS (1%-99% percentile stretch) ───────────────────────
+function autoLevels(ctx,w,h){
+  var id=ctx.getImageData(0,0,w,h);var d=id.data;
+  var hR=new Int32Array(256),hG=new Int32Array(256),hB=new Int32Array(256),n=d.length/4;
+  for(var i=0;i<d.length;i+=4){hR[d[i]]++;hG[d[i+1]]++;hB[d[i+2]]++;}
+  function pct(hist,p){var s=0,t=n*p;for(var v=0;v<256;v++){s+=hist[v];if(s>=t)return v;}return 255;}
+  var loR=pct(hR,0.005),hiR=pct(hR,0.995);
+  var loG=pct(hG,0.005),hiG=pct(hG,0.995);
+  var loB=pct(hB,0.005),hiB=pct(hB,0.995);
+  var rR=hiR-loR||1,rG=hiG-loG||1,rB=hiB-loB||1;
+  for(var j=0;j<d.length;j+=4){
+    d[j]=Math.max(0,Math.min(255,(d[j]-loR)/rR*255));
+    d[j+1]=Math.max(0,Math.min(255,(d[j+1]-loG)/rG*255));
+    d[j+2]=Math.max(0,Math.min(255,(d[j+2]-loB)/rB*255));
+  }
+  ctx.putImageData(id,0,0);
+}
+
+// ── FAST SEPARABLE BOX BLUR O(n) ──────────────────────────────────
+function separableBoxBlur(data,w,h,r){
+  var sz=2*r+1,x,y,ch,k,sum;
+  var tmp=new Float32Array(data.length);
+  var out=new Float32Array(data.length);
+  // Horizontal
+  for(y=0;y<h;y++){
+    for(ch=0;ch<3;ch++){
+      sum=0;
+      for(k=-r;k<=r;k++) sum+=data[(y*w+Math.max(0,Math.min(w-1,k)))*4+ch];
+      tmp[(y*w)*4+ch]=sum/sz;
+      for(x=1;x<w;x++){
+        sum-=data[(y*w+Math.max(0,x-r-1))*4+ch];
+        sum+=data[(y*w+Math.min(w-1,x+r))*4+ch];
+        tmp[(y*w+x)*4+ch]=sum/sz;
+      }
+    }
+    for(x=0;x<w;x++) tmp[(y*w+x)*4+3]=data[(y*w+x)*4+3];
+  }
+  // Vertical
+  for(x=0;x<w;x++){
+    for(ch=0;ch<3;ch++){
+      sum=0;
+      for(k=-r;k<=r;k++) sum+=tmp[(Math.max(0,Math.min(h-1,k))*w+x)*4+ch];
+      out[x*4+ch]=sum/sz;
+      for(y=1;y<h;y++){
+        sum-=tmp[(Math.max(0,y-r-1)*w+x)*4+ch];
+        sum+=tmp[(Math.min(h-1,y+r)*w+x)*4+ch];
+        out[(y*w+x)*4+ch]=sum/sz;
+      }
+    }
+  }
+  for(var i=3;i<data.length;i+=4) out[i]=data[i];
+  return out;
 }
 
 // ── UNSHARP MASK ──────────────────────────────────────────────────
 function applyUnsharpMask(ctx,w,h,amount,radius,threshold){
-  if(!amount)amount=1.2;if(!radius)radius=1;if(!threshold)threshold=2;
-  var src=ctx.getImageData(0,0,w,h);
-  var d=src.data;
-  var blurred=boxBlur(d,w,h,Math.round(radius));
+  if(!amount)amount=3.0;if(!radius)radius=1;if(!threshold)threshold=1;
+  var src=ctx.getImageData(0,0,w,h);var d=src.data;
+  var blurred=separableBoxBlur(d,w,h,Math.max(1,Math.round(radius)));
   var out=new Uint8ClampedArray(d.length);
   for(var i=0;i<d.length;i+=4){
     for(var c=0;c<3;c++){
-      var orig=d[i+c], blur=blurred[i+c];
-      var diff=orig-blur;
-      if(Math.abs(diff)>threshold){
-        out[i+c]=Math.max(0,Math.min(255,orig+amount*diff));
-      } else {
-        out[i+c]=orig;
-      }
+      var orig=d[i+c],blur=blurred[i+c],diff=orig-blur;
+      out[i+c]=Math.abs(diff)>threshold?Math.max(0,Math.min(255,orig+amount*diff)):orig;
     }
     out[i+3]=d[i+3];
   }
   ctx.putImageData(new ImageData(out,w,h),0,0);
 }
 
-function boxBlur(data,w,h,r){
-  var result=new Uint8ClampedArray(data.length);
-  var size=(2*r+1)*(2*r+1);
-  for(var y=0;y<h;y++){
-    for(var x=0;x<w;x++){
-      var sumR=0,sumG=0,sumB=0,count=0;
-      for(var dy=-r;dy<=r;dy++){
-        for(var dx=-r;dx<=r;dx++){
-          var nx=Math.min(w-1,Math.max(0,x+dx));
-          var ny=Math.min(h-1,Math.max(0,y+dy));
-          var idx=(ny*w+nx)*4;
-          sumR+=data[idx];sumG+=data[idx+1];sumB+=data[idx+2];count++;
-        }
-      }
-      var oi=(y*w+x)*4;
-      result[oi]=sumR/count;result[oi+1]=sumG/count;result[oi+2]=sumB/count;result[oi+3]=data[oi+3];
+// ── CLARITY (Lightroom-style local contrast, large radius) ────────
+function applyClarity(ctx,w,h,amount,radius){
+  if(!amount)amount=0.7;if(!radius)radius=22;
+  var src=ctx.getImageData(0,0,w,h);var d=src.data;
+  var blurred=separableBoxBlur(d,w,h,radius);
+  var out=new Uint8ClampedArray(d.length);
+  for(var i=0;i<d.length;i+=4){
+    var lum=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;
+    var midW=4*lum*(1-lum); // peaks at 0.5 luminance, 0 at shadows/highlights
+    for(var c=0;c<3;c++){
+      var orig=d[i+c],diff=orig-blurred[i+c];
+      out[i+c]=Math.max(0,Math.min(255,orig+amount*midW*diff));
     }
+    out[i+3]=d[i+3];
   }
-  return result;
+  ctx.putImageData(new ImageData(out,w,h),0,0);
 }
 
-// ── COLOR GRADE ───────────────────────────────────────────────────
-function applyColorGrade(ctx,w,h){
-  var id=ctx.getImageData(0,0,w,h);
-  var d=id.data;
+// ── PRO COLOR GRADE ───────────────────────────────────────────────
+function sCurveVal(v){
+  var x=v/255;
+  // Smooth cubic S-curve: deepens shadows, lifts highlights
+  var y=x<0.5?2*x*x*(1.5-x):1-2*(1-x)*(1-x)*(1.5-(1-x));
+  return Math.max(0,Math.min(255,y*255));
+}
+
+function applyProColorGrade(ctx,w,h){
+  var id=ctx.getImageData(0,0,w,h);var d=id.data;
   for(var i=0;i<d.length;i+=4){
-    // Skip fully transparent (background) pixels
-    if(d[i+3]<10) continue;
-    for(var c=0;c<3;c++){
-      var v=d[i+c];
-      // Auto-levels: slight S-curve contrast
-      v=((v/255-0.5)*1.1+0.5)*255;
-      // Warmth on highlights, slight brightness boost
-      v=v+5;
-      if(c===0) v=v+3; // slight warmth (boost red)
-      d[i+c]=Math.max(0,Math.min(255,v));
-    }
+    var r=d[i],g=d[i+1],b=d[i+2];
+    // S-curve contrast on each channel
+    r=sCurveVal(r);g=sCurveVal(g);b=sCurveVal(b);
+    // Vibrance: selectively boost desaturated areas more
+    var maxC=Math.max(r,g,b),minC=Math.min(r,g,b);
+    var sat=maxC===0?0:(maxC-minC)/maxC;
+    var vib=0.28*(1-sat*sat);
+    var avg=(r+g+b)/3;
+    r=r+(r-avg)*vib;g=g+(g-avg)*vib;b=b+(b-avg)*vib;
+    // Skin tone warmth: if warm hue range, boost red/green slightly
+    if(r>110&&r>g&&g>b&&g>75){r=Math.min(255,r+5);g=Math.min(255,g+2);}
+    // Slight overall warmth (natural look)
+    r=Math.min(255,r+4);
+    d[i]=Math.max(0,Math.min(255,r));
+    d[i+1]=Math.max(0,Math.min(255,g));
+    d[i+2]=Math.max(0,Math.min(255,b));
   }
   ctx.putImageData(id,0,0);
 }
