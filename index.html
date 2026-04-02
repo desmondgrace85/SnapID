@@ -5,23 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SnapID — Passport Photos in Seconds</title>
 <link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/selfie_segmentation.js" crossorigin="anonymous"></script>
 <style>
-:root{--gold:#f5c842;--cream:#fdf8ef;--deep:#0d0d1a;--soft-white:rgba(255,255,255,0.92);--glass:rgba(255,255,255,0.10);--glass-border:rgba(255,255,255,0.18);--radius:24px;--shadow:0 32px 80px rgba(0,0,0,0.35);}
+:root{--gold:#f5c842;--cream:#fdf8ef;--deep:#0d0d1a;--glass:rgba(255,255,255,0.10);--glass-border:rgba(255,255,255,0.18);--radius:24px;--shadow:0 32px 80px rgba(0,0,0,0.35);}
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;min-height:100%;background:var(--deep);color:var(--cream);font-family:'DM Sans',sans-serif;overflow-x:hidden;}
 .bg-canvas{position:fixed;inset:0;z-index:0;background:linear-gradient(135deg,#0d0d1a 0%,#1a0533 25%,#0a1a3a 50%,#1a2a0a 75%,#2a0a1a 100%);background-size:400% 400%;animation:gradShift 12s ease infinite;}
 .bg-canvas::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 20% 30%,rgba(138,43,226,0.35) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 70%,rgba(30,144,255,0.3) 0%,transparent 60%),radial-gradient(ellipse 40% 40% at 50% 10%,rgba(255,215,0,0.18) 0%,transparent 55%);animation:orbMove 15s ease-in-out infinite alternate;}
-.bg-canvas::after{content:'';position:absolute;inset:0;opacity:0.4;pointer-events:none;}
 @keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes orbMove{0%{transform:scale(1) translate(0,0)}50%{transform:scale(1.08) translate(-2%,3%)}100%{transform:scale(1.04) translate(-1%,1%)}}
 .particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
 .particle{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.7),transparent);animation:floatUp linear infinite;}
 @keyframes floatUp{0%{transform:translateY(110vh) scale(0);opacity:0}10%{opacity:1}90%{opacity:0.6}100%{transform:translateY(-10vh) scale(1);opacity:0}}
-.app-wrap{position:relative;z-index:10;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 60px;}
+.app-wrap{position:relative;z-index:10;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 80px;}
 header{width:100%;max-width:900px;display:flex;align-items:center;justify-content:space-between;padding:28px 0 20px;}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.7rem;letter-spacing:-1px;color:#fff;}
 .logo span{color:var(--gold);}
-.badge{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(12px);padding:6px 16px;border-radius:999px;font-size:0.75rem;font-weight:500;color:rgba(255,255,255,0.7);letter-spacing:0.5px;}
+.badge{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(12px);padding:6px 16px;border-radius:999px;font-size:0.75rem;font-weight:500;color:rgba(255,255,255,0.7);}
 .hero{text-align:center;padding:20px 0 40px;max-width:680px;}
 .hero h1{font-family:'Clash Display',sans-serif;font-size:clamp(2.2rem,6vw,3.8rem);font-weight:700;line-height:1.08;letter-spacing:-2px;color:#fff;margin-bottom:16px;}
 .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),#ff9d00,#ff6fcf,#a78bfa);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite;}
@@ -33,11 +33,18 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
 .step-dot.done{background:rgba(0,255,150,0.2);border-color:rgba(0,255,150,0.4);color:#00ff96;}
 .step-line{width:40px;height:2px;background:var(--glass-border);transition:background 0.4s;}
 .step-line.done{background:linear-gradient(90deg,var(--gold),#00ff96);}
-.card{width:100%;max-width:760px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(28px);border-radius:32px;padding:36px 32px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,0.12);animation:cardIn 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+.card{width:100%;max-width:780px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(28px);border-radius:32px;padding:36px 32px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,0.12);animation:cardIn 0.5s cubic-bezier(0.34,1.56,0.64,1);}
 @keyframes cardIn{from{opacity:0;transform:translateY(30px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .card-title{font-family:'Clash Display',sans-serif;font-size:1.4rem;font-weight:600;color:#fff;margin-bottom:6px;}
 .card-sub{font-size:0.88rem;color:rgba(255,255,255,0.5);margin-bottom:28px;}
 .section-label{font-size:0.78rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:12px;}
+.size-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:28px;}
+.size-option{border:2px solid var(--glass-border);border-radius:16px;padding:12px 14px;cursor:pointer;background:rgba(255,255,255,0.04);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);display:flex;flex-direction:column;gap:4px;}
+.size-option:hover{background:rgba(255,255,255,0.09);transform:translateY(-2px);}
+.size-option.selected{border-color:var(--gold);background:rgba(245,200,66,0.1);box-shadow:0 0 0 3px rgba(245,200,66,0.2),0 8px 24px rgba(0,0,0,0.3);transform:translateY(-2px);}
+.size-flag{font-size:1.1rem;}
+.size-name{font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;}
+.size-dims{font-size:0.72rem;color:rgba(255,255,255,0.4);font-weight:400;}
 .bg-grid{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;}
 .bg-option{position:relative;width:72px;height:72px;border-radius:18px;cursor:pointer;border:3px solid transparent;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);overflow:hidden;}
 .bg-option:hover{transform:scale(1.1) rotate(-2deg);}
@@ -46,10 +53,10 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
 .bg-option.selected .check{display:flex;}
 .bg-label{font-size:0.7rem;color:rgba(255,255,255,0.5);text-align:center;margin-top:6px;font-weight:500;}
 .bg-item{display:flex;flex-direction:column;align-items:center;}
-.camera-wrap{position:relative;width:100%;max-width:380px;margin:0 auto;aspect-ratio:3/4;border-radius:24px;overflow:hidden;background:#000;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
-#videoEl{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
-.face-guide{position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);width:55%;aspect-ratio:3/4;border:3px solid rgba(245,200,66,0.8);border-radius:50% 50% 45% 45%;box-shadow:0 0 0 9999px rgba(0,0,0,0.45),0 0 30px rgba(245,200,66,0.4);animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 9999px rgba(0,0,0,0.45),0 0 20px rgba(245,200,66,0.3)}50%{box-shadow:0 0 0 9999px rgba(0,0,0,0.45),0 0 40px rgba(245,200,66,0.7)}}
+.camera-wrap{position:relative;width:100%;max-width:340px;margin:0 auto;border-radius:24px;overflow:hidden;background:#000;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+#videoEl{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
+.face-guide{position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);width:55%;border:3px solid rgba(245,200,66,0.8);border-radius:50% 50% 45% 45%;box-shadow:0 0 0 9999px rgba(0,0,0,0.45),0 0 30px rgba(245,200,66,0.4);animation:guidePulse 2s ease-in-out infinite;}
+@keyframes guidePulse{0%,100%{box-shadow:0 0 0 9999px rgba(0,0,0,0.45),0 0 20px rgba(245,200,66,0.3)}50%{box-shadow:0 0 0 9999px rgba(0,0,0,0.45),0 0 40px rgba(245,200,66,0.7)}}
 .guide-hint{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:0.8rem;color:rgba(255,255,255,0.8);background:rgba(0,0,0,0.5);padding:6px 12px;backdrop-filter:blur(8px);}
 .shoulder-line{position:absolute;bottom:28%;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,rgba(245,200,66,0.5),transparent);}
 #canvasEl{display:none;}
@@ -64,20 +71,21 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
 .upload-zone .icon{font-size:2.2rem;margin-bottom:10px;display:block;}
 .upload-zone p{color:rgba(255,255,255,0.5);font-size:0.88rem;}
 .upload-zone strong{color:var(--gold);}
-.preview-wrap{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;}
-.preview-photo{flex:0 0 auto;width:200px;height:260px;border-radius:16px;overflow:hidden;background:#111;box-shadow:0 16px 48px rgba(0,0,0,0.5);position:relative;}
-.preview-photo img{width:100%;height:100%;object-fit:cover;}
+.preview-wrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;}
+.preview-photo{flex:0 0 auto;border-radius:12px;overflow:hidden;background:#111;box-shadow:0 16px 48px rgba(0,0,0,0.5),0 0 0 3px rgba(245,200,66,0.3);position:relative;}
+.preview-photo img{width:100%;height:100%;object-fit:cover;display:block;}
 .preview-photo .enhance-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(138,43,226,0.3),rgba(30,144,255,0.3));opacity:0;transition:opacity 0.6s;display:flex;align-items:center;justify-content:center;font-size:2rem;}
 .preview-photo.enhancing .enhance-overlay{opacity:1;animation:enhancePulse 0.8s ease infinite;}
 @keyframes enhancePulse{0%,100%{opacity:0.6}50%{opacity:1}}
 .enhance-info{flex:1;min-width:200px;}
 .enhance-info h3{font-family:'Clash Display',sans-serif;font-size:1.1rem;color:#fff;margin-bottom:10px;}
-.ai-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
-.ai-tag{background:rgba(138,43,226,0.2);border:1px solid rgba(138,43,226,0.4);color:#c084fc;padding:4px 12px;border-radius:999px;font-size:0.75rem;font-weight:500;animation:tagIn 0.4s ease both;}
+.ai-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:120px;overflow:hidden;}
+.ai-tag{background:rgba(138,43,226,0.2);border:1px solid rgba(138,43,226,0.4);color:#c084fc;padding:4px 12px;border-radius:999px;font-size:0.75rem;font-weight:500;animation:tagIn 0.3s ease both;}
 @keyframes tagIn{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
 .progress-bar-wrap{background:rgba(255,255,255,0.08);border-radius:999px;height:6px;overflow:hidden;margin-bottom:8px;}
-.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ff6fcf);border-radius:999px;width:0%;transition:width 0.3s ease;}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ff6fcf);border-radius:999px;width:0%;transition:width 0.4s ease;}
 .progress-label{font-size:0.75rem;color:rgba(255,255,255,0.4);}
+.error-box{background:rgba(255,60,60,0.12);border:1px solid rgba(255,80,80,0.3);border-radius:12px;padding:12px 16px;font-size:0.85rem;color:rgba(255,160,160,0.9);margin-top:10px;display:none;}
 .copies-grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;}
 .copy-btn{flex:1;min-width:70px;padding:16px 8px;border-radius:16px;background:var(--glass);border:2px solid var(--glass-border);color:#fff;cursor:pointer;font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);text-align:center;}
 .copy-btn:hover{transform:translateY(-4px);border-color:rgba(255,255,255,0.3);}
@@ -93,8 +101,9 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
 .btn-secondary{background:var(--glass);color:rgba(255,255,255,0.7);border:1px solid var(--glass-border);}
 .btn-secondary:hover{color:#fff;border-color:rgba(255,255,255,0.3);transform:translateY(-2px);}
 .btn-row{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;}
+.selected-info{display:inline-flex;align-items:center;gap:6px;background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:8px;padding:6px 12px;font-size:0.8rem;color:rgba(245,200,66,0.9);margin-bottom:20px;}
 .hidden{display:none!important;}
-@media(max-width:600px){.card{padding:24px 18px;border-radius:24px;}.hero h1{font-size:2rem;}.camera-wrap{max-width:100%;}.preview-wrap{flex-direction:column;}.preview-photo{width:100%;height:240px;}}
+@media(max-width:600px){.card{padding:24px 18px;border-radius:24px;}.hero h1{font-size:2rem;}.camera-wrap{max-width:100%;}.preview-wrap{flex-direction:column;}.size-grid{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -107,34 +116,36 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
   </header>
   <div class="hero">
     <h1>Passport Photos<br/><em>Perfected by AI</em></h1>
-    <p>Professional passport & ID photos in seconds.<br/>AI-enhanced, print-ready, absolutely free.</p>
+    <p>Professional passport & ID photos in seconds.<br/>AI-enhanced, background removed, print-ready. Free.</p>
   </div>
   <div class="steps-bar">
-    <div class="step-dot active" id="sd1">1</div>
-    <div class="step-line" id="sl1"></div>
-    <div class="step-dot" id="sd2">2</div>
-    <div class="step-line" id="sl2"></div>
-    <div class="step-dot" id="sd3">3</div>
-    <div class="step-line" id="sl3"></div>
+    <div class="step-dot active" id="sd1">1</div><div class="step-line" id="sl1"></div>
+    <div class="step-dot" id="sd2">2</div><div class="step-line" id="sl2"></div>
+    <div class="step-dot" id="sd3">3</div><div class="step-line" id="sl3"></div>
     <div class="step-dot" id="sd4">4</div>
   </div>
 
+  <!-- STEP 1: Size + Background -->
   <div class="card" id="step1">
-    <div class="card-title">Choose Background Color</div>
-    <div class="card-sub">Select the background for your passport photo</div>
-    <div class="section-label">Solid Colors</div>
+    <div class="card-title">Choose Your Photo Standard</div>
+    <div class="card-sub">Select your country's passport size and background color</div>
+    <div class="section-label">Passport Size</div>
+    <div class="size-grid" id="sizeGrid"></div>
+    <div class="section-label">Background Color</div>
     <div class="bg-grid" id="bgGrid"></div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="goStep(2)">Continue →</button>
     </div>
   </div>
 
+  <!-- STEP 2: Camera -->
   <div class="card hidden" id="step2">
     <div class="card-title">Position Your Face</div>
     <div class="card-sub">Fit your face and shoulders inside the oval guide</div>
-    <div class="camera-wrap">
+    <div id="selectedBadge" class="selected-info"></div>
+    <div class="camera-wrap" id="cameraWrap">
       <video id="videoEl" autoplay playsinline></video>
-      <div class="face-guide"></div>
+      <div class="face-guide" id="faceGuide"></div>
       <div class="shoulder-line"></div>
       <div class="guide-hint">👆 Center your face · Keep shoulders visible</div>
       <canvas id="canvasEl"></canvas>
@@ -144,16 +155,17 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
     <label class="upload-zone">
       <input type="file" id="fileInput" accept="image/*" onchange="handleUpload(event)"/>
       <span class="icon">🖼️</span>
-      <p><strong>Click to upload</strong> or drag & drop<br/>JPG, PNG, WEBP supported</p>
+      <p><strong>Click to upload</strong> or drag & drop<br/>JPG, PNG, WEBP — the clearer the better</p>
     </label>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
     </div>
   </div>
 
+  <!-- STEP 3: Enhancement -->
   <div class="card hidden" id="step3">
     <div class="card-title">AI Enhancement</div>
-    <div class="card-sub">Your photo is being polished to perfection</div>
+    <div class="card-sub">Removing background, sharpening detail, applying your settings</div>
     <div class="preview-wrap">
       <div class="preview-photo" id="previewPhoto">
         <img id="previewImg" src="" alt="Your photo"/>
@@ -164,18 +176,21 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
         <div class="ai-tags" id="aiTags"></div>
         <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
         <div class="progress-label" id="progressLabel">Starting enhancement...</div>
+        <div class="error-box" id="errorBox"></div>
       </div>
     </div>
-    <div class="btn-row" id="enhanceBtns" style="display:none">
+    <div class="btn-row hidden" id="enhanceBtns">
       <button class="btn btn-secondary" onclick="goStep(2)">← Retake</button>
       <button class="btn btn-primary" onclick="goStep(4)">Continue →</button>
     </div>
   </div>
 
+  <!-- STEP 4: Download -->
   <div class="card hidden" id="step4">
     <div class="card-title">Download Options</div>
-    <div class="card-sub">Choose how many copies and the file format</div>
-    <div class="section-label">Number of Copies</div>
+    <div class="card-sub">Choose copies and format — your photo is ready</div>
+    <div id="finalPreviewWrap" style="text-align:center;margin-bottom:24px;"></div>
+    <div class="section-label">Number of Copies on Sheet</div>
     <div class="copies-grid">
       <div class="copy-btn" onclick="selectCopies(1,this)">1<span>Single</span></div>
       <div class="copy-btn selected" onclick="selectCopies(2,this)">2<span>Pair</span></div>
@@ -197,49 +212,101 @@ header{width:100%;max-width:900px;display:flex;align-items:center;justify-conten
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-(function(){
-  var c=document.getElementById('particles');
-  for(var i=0;i<28;i++){
-    var p=document.createElement('div');p.className='particle';
-    var s=Math.random()*4+1;
-    p.style.cssText='width:'+s+'px;height:'+s+'px;left:'+Math.random()*100+'%;animation-duration:'+(Math.random()*15+8)+'s;animation-delay:'+(Math.random()*10)+'s;opacity:'+(Math.random()*0.5+0.1)+';';
-    c.appendChild(p);
-  }
-})();
+// Particles
+(function(){var c=document.getElementById('particles');for(var i=0;i<28;i++){var p=document.createElement('div');p.className='particle';var s=Math.random()*4+1;p.style.cssText='width:'+s+'px;height:'+s+'px;left:'+Math.random()*100+'%;animation-duration:'+(Math.random()*15+8)+'s;animation-delay:'+(Math.random()*10)+'s;opacity:'+(Math.random()*0.5+0.1)+';';c.appendChild(p);}})();
 
+// ── DATA ──────────────────────────────────────────────────────────
 var BG_OPTIONS=[
   {name:'White',color:'#ffffff'},{name:'Blue',color:'#0047AB'},
   {name:'Red',color:'#CC0000'},{name:'Light Blue',color:'#6cb4e4'},
-  {name:'Grey',color:'#b0b0b0'},{name:'Black',color:'#111111'},
-  {name:'Cream',color:'#f5f0e0'},{name:'Green',color:'#1a6b3a'},
+  {name:'Grey',color:'#b0b0b0'},{name:'Off-White',color:'#f5f0e0'},
+  {name:'Cream',color:'#f5e6c8'},{name:'Dark Blue',color:'#003580'},
 ];
-var selectedBg=BG_OPTIONS[0],selectedCopies=2,selectedFormat='jpg',capturedImageData=null,stream=null,currentStep=1;
 
+var SIZES=[
+  {name:'US / Canada', flag:'🇺🇸', w:51, h:51, label:'2 × 2 inches'},
+  {name:'UK', flag:'🇬🇧', w:35, h:45, label:'35 × 45 mm'},
+  {name:'EU / Schengen', flag:'🇪🇺', w:35, h:45, label:'35 × 45 mm'},
+  {name:'Ghana / Nigeria', flag:'🇬🇭', w:35, h:45, label:'35 × 45 mm'},
+  {name:'India', flag:'🇮🇳', w:35, h:45, label:'35 × 45 mm'},
+  {name:'China', flag:'🇨🇳', w:33, h:48, label:'33 × 48 mm'},
+  {name:'Australia', flag:'🇦🇺', w:35, h:45, label:'35 × 45 mm'},
+  {name:'Japan / Korea', flag:'🇯🇵', w:35, h:45, label:'35 × 45 mm'},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────
+var selectedBg=BG_OPTIONS[0], selectedSize=SIZES[0];
+var selectedCopies=2, selectedFormat='jpg';
+var capturedImageData=null, stream=null, currentStep=1;
+var segModel=null;
+
+// ── BUILD SIZE GRID ───────────────────────────────────────────────
+var sg=document.getElementById('sizeGrid');
+SIZES.forEach(function(s,i){
+  var el=document.createElement('div');
+  el.className='size-option'+(i===0?' selected':'');
+  el.innerHTML='<div class="size-flag">'+s.flag+'</div><div class="size-name">'+s.name+'</div><div class="size-dims">'+s.label+'</div>';
+  el.onclick=function(){
+    document.querySelectorAll('.size-option').forEach(function(o){o.classList.remove('selected');});
+    el.classList.add('selected');
+    selectedSize=SIZES[i];
+    updateCameraAspect();
+  };
+  sg.appendChild(el);
+});
+
+// ── BUILD BG GRID ─────────────────────────────────────────────────
 var bgGrid=document.getElementById('bgGrid');
 BG_OPTIONS.forEach(function(bg,i){
   var item=document.createElement('div');item.className='bg-item';
-  item.innerHTML='<div class="bg-option'+(i===0?' selected':'')+'" style="background:'+bg.color+'" onclick="selectBgFn('+i+',this)"><div class="check">✓</div></div><div class="bg-label">'+bg.name+'</div>';
+  item.innerHTML='<div class="bg-option'+(i===0?' selected':'')+'" style="background:'+bg.color+';'+(bg.color==='#ffffff'?'box-shadow:inset 0 0 0 1px rgba(255,255,255,0.3);':'')+'" data-idx="'+i+'"><div class="check">✓</div></div><div class="bg-label">'+bg.name+'</div>';
+  item.querySelector('.bg-option').onclick=function(){
+    document.querySelectorAll('.bg-option').forEach(function(o){o.classList.remove('selected');});
+    this.classList.add('selected');
+    selectedBg=BG_OPTIONS[i];
+  };
   bgGrid.appendChild(item);
 });
 
-function selectBgFn(idx,el){document.querySelectorAll('.bg-option').forEach(function(o){o.classList.remove('selected');});el.classList.add('selected');selectedBg=BG_OPTIONS[idx];}
-window.selectBg=selectBgFn;
+// ── CAMERA ASPECT RATIO ───────────────────────────────────────────
+function updateCameraAspect(){
+  var r=selectedSize.w/selectedSize.h;
+  var wrap=document.getElementById('cameraWrap');
+  if(r>=1){
+    wrap.style.maxWidth='380px';
+    wrap.style.aspectRatio=selectedSize.w+'/'+selectedSize.h;
+  } else {
+    wrap.style.maxWidth='300px';
+    wrap.style.aspectRatio=selectedSize.w+'/'+selectedSize.h;
+  }
+  // Adjust face guide oval to match
+  var guide=document.getElementById('faceGuide');
+  guide.style.aspectRatio=selectedSize.w+'/'+selectedSize.h;
+}
 
+// ── STEP NAVIGATION ───────────────────────────────────────────────
 function goStep(n){
   document.getElementById('step'+currentStep).classList.add('hidden');
   document.getElementById('step'+n).classList.remove('hidden');
   for(var i=1;i<=4;i++){var dot=document.getElementById('sd'+i);dot.classList.remove('active','done');if(i<n){dot.classList.add('done');dot.textContent='✓';}else if(i===n){dot.classList.add('active');dot.textContent=i;}else{dot.textContent=i;}}
   for(var j=1;j<=3;j++){document.getElementById('sl'+j).classList.toggle('done',j<n);}
   currentStep=n;
-  if(n===2)startCamera();else stopCamera();
-  if(n===3)runEnhancement();
+  if(n===2){updateCameraAspect();startCamera();updateBadge();}else{stopCamera();}
+  if(n===3){runEnhancement();}
+  if(n===4){buildFinalPreview();}
 }
 window.goStep=goStep;
 
+function updateBadge(){
+  var b=document.getElementById('selectedBadge');
+  b.innerHTML=selectedSize.flag+' <strong>'+selectedSize.name+'</strong> · '+selectedSize.label+' · <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+selectedBg.color+';vertical-align:middle;margin-left:4px;border:1px solid rgba(255,255,255,0.2);"></span> '+selectedBg.name;
+}
+
+// ── CAMERA ────────────────────────────────────────────────────────
 function startCamera(){
   navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false})
-    .then(function(s){stream=s;document.getElementById('videoEl').srcObject=stream;})
-    .catch(function(){});
+    .then(function(s){stream=s;document.getElementById('videoEl').srcObject=s;})
+    .catch(function(e){console.warn('Camera error',e);});
 }
 function stopCamera(){if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}}
 
@@ -262,54 +329,250 @@ function handleUpload(e){
 }
 window.handleUpload=handleUpload;
 
-var ENHANCE_STEPS=[
-  {label:'Analyzing face structure...',tag:'Face Detection',pct:15},
-  {label:'Removing background...',tag:'BG Removal',pct:35},
-  {label:'Applying background color...',tag:'Color Fill',pct:50},
-  {label:'Enhancing sharpness & detail...',tag:'Sharpening',pct:65},
-  {label:'Smoothing skin tone...',tag:'Skin Retouch',pct:78},
-  {label:'Adjusting brightness & contrast...',tag:'Color Grade',pct:88},
-  {label:'Final quality check...',tag:'QA Pass',pct:96},
-  {label:'Done! Your photo is ready ✨',tag:'Complete',pct:100},
-];
+// ── ENHANCEMENT ───────────────────────────────────────────────────
+function setTag(text){
+  var tags=document.getElementById('aiTags');
+  var tag=document.createElement('div');tag.className='ai-tag';tag.textContent='✓ '+text;tags.appendChild(tag);
+}
+function setProgress(pct,text){
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=text;
+}
 
-function runEnhancement(){
+async function runEnhancement(){
   var img=document.getElementById('previewImg');
   var photo=document.getElementById('previewPhoto');
   var tagsEl=document.getElementById('aiTags');
-  var fill=document.getElementById('progressFill');
-  var label=document.getElementById('progressLabel');
+  var errBox=document.getElementById('errorBox');
   var btns=document.getElementById('enhanceBtns');
-  img.src=capturedImageData||'';tagsEl.innerHTML='';fill.style.width='0%';btns.style.display='none';photo.classList.add('enhancing');
-  var i=0;
-  function runNext(){
-    if(i>=ENHANCE_STEPS.length){photo.classList.remove('enhancing');applyEnhancement();btns.style.display='flex';return;}
-    var s=ENHANCE_STEPS[i];fill.style.width=s.pct+'%';label.textContent=s.label;
-    var tag=document.createElement('div');tag.className='ai-tag';tag.style.animationDelay=(i*0.08)+'s';tag.textContent='✓ '+s.tag;tagsEl.appendChild(tag);
-    i++;setTimeout(runNext,320+Math.random()*200);
+  tagsEl.innerHTML='';errBox.style.display='none';btns.classList.add('hidden');
+  photo.classList.add('enhancing');
+  img.src=capturedImageData||'';
+
+  // Set preview size based on passport ratio
+  var ratio=selectedSize.w/selectedSize.h;
+  var previewH=260, previewW=Math.round(previewH*ratio);
+  if(previewW<160){previewW=160;previewH=Math.round(previewW/ratio);}
+  photo.style.width=previewW+'px';
+  photo.style.height=previewH+'px';
+
+  setProgress(5,'Preparing image...');
+  setTag('Image loaded');
+
+  try {
+    setProgress(15,'Loading AI segmentation model...');
+    var processed = await processWithMediaPipe();
+    capturedImageData=processed;
+    img.src=capturedImageData;
+    photo.classList.remove('enhancing');
+    setProgress(100,'Done! Your photo is ready ✨');
+    setTag('Complete');
+    btns.classList.remove('hidden');
+  } catch(err) {
+    console.warn('MediaPipe failed, using fallback:', err);
+    setTag('Using enhanced fallback');
+    applyFallbackEnhancement();
+    photo.classList.remove('enhancing');
+    setProgress(100,'Done! ✨');
+    btns.classList.remove('hidden');
   }
-  runNext();
 }
 
-function applyEnhancement(){
-  if(!capturedImageData)return;
+async function processWithMediaPipe(){
+  return new Promise(function(resolve, reject){
+    var timeout=setTimeout(function(){reject(new Error('MediaPipe timeout'));}, 25000);
+
+    // Lazy-init model
+    if(!segModel){
+      segModel=new SelfieSegmentation({
+        locateFile:function(file){
+          return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/'+file;
+        }
+      });
+      segModel.setOptions({modelSelection:1});
+    }
+
+    segModel.onResults(function(results){
+      clearTimeout(timeout);
+      try{
+        setProgress(60,'Background removed...');
+        setTag('BG Removal');
+
+        var srcW=results.image.width, srcH=results.image.height;
+
+        // Build mask canvas
+        var maskCvs=document.createElement('canvas');
+        maskCvs.width=srcW;maskCvs.height=srcH;
+        var maskCtx=maskCvs.getContext('2d');
+        maskCtx.drawImage(results.segmentationMask,0,0,srcW,srcH);
+        var maskPx=maskCtx.getImageData(0,0,srcW,srcH).data;
+
+        // Build person canvas with alpha mask applied
+        var personCvs=document.createElement('canvas');
+        personCvs.width=srcW;personCvs.height=srcH;
+        var personCtx=personCvs.getContext('2d');
+        personCtx.drawImage(results.image,0,0,srcW,srcH);
+        var personPx=personCtx.getImageData(0,0,srcW,srcH);
+        // Soft edge: apply mask as alpha with slight feathering
+        for(var i=0;i<maskPx.length;i+=4){
+          var confidence=maskPx[i];
+          // Smooth the edge with a soft threshold
+          var alpha=confidence<128?confidence*2:255;
+          personPx.data[i+3]=Math.min(255,alpha);
+        }
+        personCtx.putImageData(personPx,0,0);
+
+        // Determine output canvas size from passport standard
+        var ratio=selectedSize.w/selectedSize.h;
+        var outH=600, outW=Math.round(600*ratio);
+        if(ratio>=1){outW=600;outH=Math.round(600/ratio);}
+
+        var outCvs=document.createElement('canvas');
+        outCvs.width=outW;outCvs.height=outH;
+        var outCtx=outCvs.getContext('2d');
+
+        // Fill background
+        outCtx.fillStyle=selectedBg.color;
+        outCtx.fillRect(0,0,outW,outH);
+
+        setProgress(72,'Framing photo...');
+        setTag('Smart Crop');
+
+        // Smart crop: center-crop source to passport aspect, aligned top for face
+        var srcRatio=srcW/srcH;
+        var dstRatio=outW/outH;
+        var sx,sy,sw,sh;
+        if(srcRatio>dstRatio){
+          // Wider — crop sides
+          sh=srcH; sw=srcH*dstRatio;
+          sx=(srcW-sw)/2; sy=0;
+        } else {
+          // Taller — crop bottom (keep top which has the face)
+          sw=srcW; sh=srcW/dstRatio;
+          sx=0; sy=0;
+        }
+        outCtx.drawImage(personCvs,sx,sy,sw,sh,0,0,outW,outH);
+
+        setProgress(82,'Sharpening & detail boost...');
+        setTag('AI Sharpen');
+        applyUnsharpMask(outCtx,outW,outH,1.5,1.2,3);
+
+        setProgress(91,'Color correction...');
+        setTag('Color Grade');
+        applyColorGrade(outCtx,outW,outH);
+
+        resolve(outCvs.toDataURL('image/jpeg',0.96));
+      } catch(e){reject(e);}
+    });
+
+    setProgress(25,'Detecting face & person...');
+    setTag('Face Detection');
+    var sourceImg=new Image();
+    sourceImg.onload=function(){
+      segModel.send({image:sourceImg}).catch(reject);
+    };
+    sourceImg.onerror=reject;
+    sourceImg.src=capturedImageData;
+  });
+}
+
+// Fallback when MediaPipe not available
+function applyFallbackEnhancement(){
   var image=new Image();
   image.onload=function(){
+    var ratio=selectedSize.w/selectedSize.h;
+    var outH=600,outW=Math.round(600*ratio);
+    if(ratio>=1){outW=600;outH=Math.round(600/ratio);}
     var c=document.createElement('canvas');
-    var srcW=image.width,srcH=image.height,targetRatio=4/5;
-    var cropW=srcW,cropH=srcH;
-    if(srcW/srcH>targetRatio){cropW=srcH*targetRatio;}else{cropH=srcW/targetRatio;}
-    var sx=(srcW-cropW)/2,sy=(srcH-cropH)/2;
-    c.width=400;c.height=500;
+    c.width=outW;c.height=outH;
     var ctx=c.getContext('2d');
-    ctx.fillStyle=selectedBg.color;ctx.fillRect(0,0,400,500);
-    ctx.filter='brightness(1.08) contrast(1.12) saturate(1.05)';
-    ctx.drawImage(image,sx,sy,cropW,cropH,0,0,400,500);
-    ctx.filter='none';
-    capturedImageData=c.toDataURL('image/jpeg',0.95);
+    ctx.fillStyle=selectedBg.color;
+    ctx.fillRect(0,0,outW,outH);
+    // Center-crop source
+    var srcR=image.width/image.height,dstR=outW/outH;
+    var sx,sy,sw,sh;
+    if(srcR>dstR){sh=image.height;sw=image.height*dstR;sx=(image.width-sw)/2;sy=0;}
+    else{sw=image.width;sh=image.width/dstR;sx=0;sy=0;}
+    ctx.drawImage(image,sx,sy,sw,sh,0,0,outW,outH);
+    applyUnsharpMask(ctx,outW,outH,1.5,1.2,3);
+    applyColorGrade(ctx,outW,outH);
+    capturedImageData=c.toDataURL('image/jpeg',0.96);
     document.getElementById('previewImg').src=capturedImageData;
+    document.getElementById('enhanceBtns').classList.remove('hidden');
   };
   image.src=capturedImageData;
+}
+
+// ── UNSHARP MASK ──────────────────────────────────────────────────
+function applyUnsharpMask(ctx,w,h,amount,radius,threshold){
+  if(!amount)amount=1.2;if(!radius)radius=1;if(!threshold)threshold=2;
+  var src=ctx.getImageData(0,0,w,h);
+  var d=src.data;
+  var blurred=boxBlur(d,w,h,Math.round(radius));
+  var out=new Uint8ClampedArray(d.length);
+  for(var i=0;i<d.length;i+=4){
+    for(var c=0;c<3;c++){
+      var orig=d[i+c], blur=blurred[i+c];
+      var diff=orig-blur;
+      if(Math.abs(diff)>threshold){
+        out[i+c]=Math.max(0,Math.min(255,orig+amount*diff));
+      } else {
+        out[i+c]=orig;
+      }
+    }
+    out[i+3]=d[i+3];
+  }
+  ctx.putImageData(new ImageData(out,w,h),0,0);
+}
+
+function boxBlur(data,w,h,r){
+  var result=new Uint8ClampedArray(data.length);
+  var size=(2*r+1)*(2*r+1);
+  for(var y=0;y<h;y++){
+    for(var x=0;x<w;x++){
+      var sumR=0,sumG=0,sumB=0,count=0;
+      for(var dy=-r;dy<=r;dy++){
+        for(var dx=-r;dx<=r;dx++){
+          var nx=Math.min(w-1,Math.max(0,x+dx));
+          var ny=Math.min(h-1,Math.max(0,y+dy));
+          var idx=(ny*w+nx)*4;
+          sumR+=data[idx];sumG+=data[idx+1];sumB+=data[idx+2];count++;
+        }
+      }
+      var oi=(y*w+x)*4;
+      result[oi]=sumR/count;result[oi+1]=sumG/count;result[oi+2]=sumB/count;result[oi+3]=data[oi+3];
+    }
+  }
+  return result;
+}
+
+// ── COLOR GRADE ───────────────────────────────────────────────────
+function applyColorGrade(ctx,w,h){
+  var id=ctx.getImageData(0,0,w,h);
+  var d=id.data;
+  for(var i=0;i<d.length;i+=4){
+    // Skip fully transparent (background) pixels
+    if(d[i+3]<10) continue;
+    for(var c=0;c<3;c++){
+      var v=d[i+c];
+      // Auto-levels: slight S-curve contrast
+      v=((v/255-0.5)*1.1+0.5)*255;
+      // Warmth on highlights, slight brightness boost
+      v=v+5;
+      if(c===0) v=v+3; // slight warmth (boost red)
+      d[i+c]=Math.max(0,Math.min(255,v));
+    }
+  }
+  ctx.putImageData(id,0,0);
+}
+
+// ── DOWNLOAD ──────────────────────────────────────────────────────
+function buildFinalPreview(){
+  var wrap=document.getElementById('finalPreviewWrap');
+  var ratio=selectedSize.w/selectedSize.h;
+  var pw=Math.round(120*ratio),ph=120;
+  if(ratio>=1){pw=120;ph=Math.round(120/ratio);}
+  wrap.innerHTML='<img src="'+(capturedImageData||'')+'" style="width:'+pw+'px;height:'+ph+'px;object-fit:cover;border-radius:8px;border:2px solid rgba(245,200,66,0.4);"/>';
 }
 
 function selectCopies(n,el){document.querySelectorAll('.copy-btn').forEach(function(b){b.classList.remove('selected');});el.classList.add('selected');selectedCopies=n;}
@@ -318,26 +581,34 @@ function selectFormat(fmt,el){document.querySelectorAll('.format-btn').forEach(f
 window.selectFormat=selectFormat;
 
 function downloadPhoto(){
-  if(!capturedImageData){alert('No photo captured yet.');return;}
+  if(!capturedImageData){alert('No photo yet.');return;}
   var image=new Image();
   image.onload=function(){
     var cols=selectedCopies<=2?selectedCopies:Math.ceil(Math.sqrt(selectedCopies));
     var rows=Math.ceil(selectedCopies/cols);
-    var pw=image.width,ph=image.height,gap=12;
+    var pw=image.width,ph=image.height,gap=16;
     var canvas=document.createElement('canvas');
-    canvas.width=cols*pw+(cols+1)*gap;canvas.height=rows*ph+(rows+1)*gap;
+    canvas.width=cols*pw+(cols+1)*gap;
+    canvas.height=rows*ph+(rows+1)*gap;
     var ctx=canvas.getContext('2d');
-    ctx.fillStyle='#f0f0f0';ctx.fillRect(0,0,canvas.width,canvas.height);
-    for(var r=0;r<rows;r++){for(var col=0;col<cols;col++){var idx=r*cols+col;if(idx>=selectedCopies)break;ctx.drawImage(image,gap+col*(pw+gap),gap+r*(ph+gap),pw,ph);}}
+    ctx.fillStyle='#f0ede8';ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Add tiny cut guides
+    ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.5;ctx.setLineDash([4,4]);
+    for(var r=0;r<rows;r++){for(var col=0;col<cols;col++){
+      var idx=r*cols+col;if(idx>=selectedCopies)break;
+      var gx=gap+col*(pw+gap),gy=gap+r*(ph+gap);
+      ctx.drawImage(image,gx,gy,pw,ph);
+      ctx.strokeRect(gx-1,gy-1,pw+2,ph+2);
+    }}
     if(selectedFormat==='pdf'){
       var jsPDF=window.jspdf.jsPDF;
       var pdf=new jsPDF({orientation:canvas.width>canvas.height?'landscape':'portrait',unit:'px',format:[canvas.width,canvas.height]});
       pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,canvas.width,canvas.height);
-      pdf.save('snapid_passport_'+selectedCopies+'x.pdf');
+      pdf.save('snapid_'+selectedSize.name.replace(/\s/g,'_')+'_'+selectedCopies+'x.pdf');
     } else {
       var mime=selectedFormat==='png'?'image/png':'image/jpeg';
       var link=document.createElement('a');
-      link.download='snapid_passport_'+selectedCopies+'x.'+selectedFormat;
+      link.download='snapid_'+selectedSize.name.replace(/\s/g,'_')+'_'+selectedCopies+'x.'+selectedFormat;
       link.href=canvas.toDataURL(mime,0.95);link.click();
     }
   };
